@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,61 +19,85 @@ namespace STRIPSAlgorithm
         #region factoryMethods
         static Action Stack(char x, char y)
         {
-            List<string> pre = new List<string>();
-            pre.Add($"Clear({y})");
-            pre.Add($"Holding({x})");
-            List<string> add = new List<string>();
-            add.Add($"ArmEmpty()");
-            add.Add($"On({x},{y})");
-            add.Add($"Clear({x})");
-            List<string> del = new List<string>();
-            del.Add($"Clear({y})");
-            del.Add($"Holding({x})");
+            List<string> pre = new List<string>
+            {
+                $"Clear({y})",
+                $"Holding({x})"
+            };
+            List<string> add = new List<string>
+            {
+                $"ArmEmpty()",
+                $"On({x},{y})",
+                $"Clear({x})"
+            };
+            List<string> del = new List<string>
+            {
+                $"Clear({y})",
+                $"Holding({x})"
+            };
             return new Action { name = $"Stack({x},{y})", pre = pre, add = add, del = del };
         }
 
         static Action Unstack(char x, char y)
         {
-            List<string> pre = new List<string>();
-            pre.Add($"On({x},{y})");
-            pre.Add($"Clear({x})");
-            pre.Add($"ArmEmpty()");
-            List<string> add = new List<string>();
-            add.Add($"Holding({x})");
-            add.Add($"Clear({y})");
-            List<string> del = new List<string>();
-            del.Add($"On({x},{y})");
-            del.Add($"Clear({x})");
-            del.Add("ArmEmpty()");
+            List<string> pre = new List<string>
+            {
+                $"ArmEmpty()",
+                $"On({x},{y})",
+                $"Clear({x})"
+            };
+            List<string> add = new List<string>
+            {
+                $"Holding({x})",
+                $"Clear({y})"
+            };
+            List<string> del = new List<string>
+            {
+                $"On({x},{y})",
+                $"Clear({x})",
+                "ArmEmpty()"
+            };
             return new Action { name = $"Unstack({x},{y})", pre = pre, add = add, del = del };
         }
 
         static Action Pickup(char x)
         {
-            List<string> pre = new List<string>();
-            pre.Add($"OnTable({x})");
-            pre.Add($"Clear({x})");
-            pre.Add($"ArmEmpty()");
-            List<string> add = new List<string>();
-            add.Add($"Holding({x})");
-            List<string> del = new List<string>();
-            del.Add($"OnTable({x})");
-            del.Add($"Clear({x})");
-            del.Add($"ArmEmpty()");
+            List<string> pre = new List<string>
+            {
+                $"ArmEmpty()",
+                $"OnTable({x})",
+                $"Clear({x})"
+            };
+            List<string> add = new List<string>
+            {
+                $"Holding({x})"
+            };
+            List<string> del = new List<string>
+            {
+                $"OnTable({x})",
+                $"Clear({x})",
+                $"ArmEmpty()"
+            };
             return new Action { name = $"Pickup({x})", pre = pre, add = add, del = del };
         }
 
         static Action Putdown(char x)
         {
-            List<string> add = new List<string>();
-            add.Add($"OnTable({x})");
-            add.Add($"Clear({x})");
-            add.Add($"ArmEmpty()");
-            List<string> pre = new List<string>();
-            pre.Add($"Holding({x})");
-            List<string> del = new List<string>();
-            del.Add($"Holding({x})");
-            return new Action { name = $"Putdown({x})", pre = pre, add = add, del = del }; 
+            List<string> add = new List<string>
+            {
+                $"OnTable({x})",
+                $"Clear({x})",
+                $"ArmEmpty()"
+            };
+            List<string> pre = new List<string>
+            {
+                $"Holding({x})"
+            };
+            List<string> del = new List<string>
+            {
+                $"Holding({x})"
+            };
+            return new Action { name = $"Putdown({x})", pre = pre, add = add, del = del };
         }
         #endregion
 
@@ -81,16 +105,6 @@ namespace STRIPSAlgorithm
 
         static void Main(string[] args)
         {
-            /*Console.WriteLine("How tall is the tallest stack?");
-            int h = Int32.Parse(Console.ReadLine());
-            Console.WriteLine("How many stacks are there?");
-            int w = Int32.Parse(Console.ReadLine());*/
-
-            /*Console.WriteLine("First enter the starting state!");
-            List<string> starting = getWorldPredicates(getWorld(w, h), w, h);
-
-            Console.WriteLine("First enter the goal state!");
-            List<string> goal = getWorldPredicates(getWorld(w, h), w, h);*/
             string fileNum = Console.ReadLine();
             FileParser data = new FileParser($"test{fileNum}.in");
             List<string> starting = getWorldPredicates(data.StartState, data.W, data.H);
@@ -156,7 +170,7 @@ namespace STRIPSAlgorithm
         }
 
         static public List<string> getWorldPredicates(char[,] world, int w, int h)
-        { 
+        {
             List<string> predicates = new List<string>();
             for (int y = 0; y < h; y++)
             {
@@ -164,7 +178,7 @@ namespace STRIPSAlgorithm
                 {
                     if (world[x, y] != '0')
                     {
-                        if (y == h-1)
+                        if (y == h - 1)
                         {
                             predicates.Add($"OnTable({world[x, y]})");
                         }
@@ -197,7 +211,7 @@ namespace STRIPSAlgorithm
                 action = Putdown(block);
                 operators.Add(action.name, action);
             }
-            for (int i = 0; i < blocks.Count; i++) 
+            for (int i = 0; i < blocks.Count; i++)
             {
                 for (int j = 0; j < blocks.Count; j++)
                 {
@@ -216,17 +230,27 @@ namespace STRIPSAlgorithm
                 string g = goals.Peek();
                 if (operators.ContainsKey(g))
                 {
-                    plan.Add(g);
-                    foreach (var predicate in operators[g].del)
+                    bool valid = true;
+                    operators[g].pre.FindAll(x => world.Contains(x) != true).ForEach(x =>
+                       {
+                           valid = false;
+                           goals.Push(x);
+                       });
+                    if (valid)
                     {
-                        world.Remove(predicate);
+                        plan.Add(g);
+                        foreach (var predicate in operators[g].del)
+                        {
+                            world.Remove(predicate);
+                        }
+                        foreach (var predicate in operators[g].add)
+                        {
+                            world.Add(predicate);
+                        }
+                        goals.Pop();
                     }
-                    foreach (var predicate in operators[g].add)
-                    {
-                        world.Add(predicate);
-                    }
-                    goals.Pop();
-                }else if (world.Contains(g))
+                }
+                else if (world.Contains(g))
                 {
                     goals.Pop();
                 }
@@ -236,8 +260,8 @@ namespace STRIPSAlgorithm
 
                     foreach (var item in operators)
                     {
-                        
-                        if (item.Value.add.Contains(g)) 
+
+                        if (item.Value.add.Contains(g))
                         {
                             int score = 0; // lower is better;
                             foreach (var condition in item.Value.del)
@@ -246,6 +270,7 @@ namespace STRIPSAlgorithm
                                 {
                                     score += 1; //BAD, we want to keep this
                                 }
+                                plan.FindAll((x) => operators[x].add.Contains(x)).ForEach(x => score += 5);
                             }
                             foreach (var condition in item.Value.add)
                             {
@@ -275,7 +300,7 @@ namespace STRIPSAlgorithm
                             }
                             if (goals.Contains(item.Key))
                             {
-                                score += 5;
+                                //score += 5;
                             }
                             choices.Add(new Tuple<string, int>(item.Key, score));
                         }
