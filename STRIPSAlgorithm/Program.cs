@@ -201,6 +201,8 @@ namespace STRIPSAlgorithm
         {
             List<string> plan = new List<string>();
             Stack<string> goals = new Stack<string>(goal);
+            List<List<string>> worldStates = new List<List<string>> { new List<string>(world) };
+            List<string> choiceSequence = new List<string>();
 
             #region ENUMERATE ALL ACTIONS
             Dictionary<string, Action> operators = new Dictionary<string, Action>();
@@ -221,6 +223,27 @@ namespace STRIPSAlgorithm
                         operators.Add(action.name, action);
                         action = Unstack(blocks[i], blocks[j]);
                         operators.Add(action.name, action);
+                    }
+                }
+            }
+            Dictionary<string, string> inverses = new Dictionary<string, string>();
+            foreach (var block in blocks)
+            {
+                Action action = Pickup(block);
+                Action inverse = Putdown(block);
+                inverses.Add(action.name, inverse.name);
+                inverses.Add(inverse.name, action.name);
+            }
+            for (int i = 0; i < blocks.Count; i++)
+            {
+                for (int j = 0; j < blocks.Count; j++)
+                {
+                    if (i != j)
+                    {
+                        Action action = Stack(blocks[i], blocks[j]);
+                        Action inverse = Unstack(blocks[i], blocks[j]);
+                        inverses.Add(action.name, inverse.name);
+                        inverses.Add(inverse.name, action.name);
                     }
                 }
             }
@@ -247,6 +270,7 @@ namespace STRIPSAlgorithm
                         {
                             world.Add(predicate);
                         }
+                        worldStates.Add(new List<string>(world));
                         goals.Pop();
                     }
                 }
@@ -264,13 +288,59 @@ namespace STRIPSAlgorithm
                         if (item.Value.add.Contains(g))
                         {
                             int score = 0; // lower is better;
+                            int indexOfInverse = choiceSequence.LastIndexOf(inverses[item.Key]);
+                            if (indexOfInverse >= 0 && choiceSequence.Count-indexOfInverse < 4) //Loop probable
+                            {
+                                score += 1000;
+                            }
+                            if (item.Key.Substring(0,7) == "Unstack" && world.Contains($"OnTable({item.Key[8]})")) //WHY WOULD YOU TRY TO STACK SOMETHING JUST TO UNSTACK IT
+                            {
+                                score += 2000;
+                            }
+                            if (item.Key.Substring(0, 6) == "Pickup" && world.FindAll((x)=>x.Substring(0,4) == $"On({item.Key[7]})").Count > 0) //WHY WOULD YOU TRY TO FLOOR SOMETHING JUST TO PICK IT
+                            {
+                                score += 2000;
+                            }
+                            int indexOfPrev = choiceSequence.LastIndexOf(item.Key);
+                            if (indexOfPrev >= 0 && choiceSequence.Count-indexOfPrev < 4) //Loop extremely probable
+                            {
+                                score += 5000;
+                            }
+                            //Check if performing this action leaves the world in a state we have already seen
+                            List<string> newWorld = new List<string>(world);
+                            foreach (var add in item.Value.add)
+                            {
+                                newWorld.Add(add);
+                            }
+                            foreach (var del in item.Value.del)
+                            {
+                                if (newWorld.Contains(del))
+                                {
+                                    newWorld.Remove(del);
+                                }
+                            }
+                            foreach (var state in worldStates)
+                            {
+                                bool equivalent = true;
+                                foreach (var predicate in newWorld)
+                                {
+                                    if (!state.Contains(predicate))
+                                    {
+                                        equivalent = false;
+                                        break;
+                                    }
+                                }
+                                if (equivalent)
+                                {
+                                    score += 1000;
+                                }
+                            }
                             foreach (var condition in item.Value.del)
                             {
                                 if (goal.Contains(condition))
                                 {
                                     score += 1; //BAD, we want to keep this
                                 }
-                                plan.FindAll((x) => operators[x].add.Contains(x)).ForEach(x => score += 5);
                             }
                             foreach (var condition in item.Value.add)
                             {
@@ -307,6 +377,8 @@ namespace STRIPSAlgorithm
                     }
                     choices = choices.OrderBy((x) => x.Item2).ToList();
                     string choice = choices[0].Item1;
+                    choiceSequence.Add(choice);
+
                     goals.Pop();
                     goals.Push(choice);
                     foreach (var condition in operators[choice].pre)
